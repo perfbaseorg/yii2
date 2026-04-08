@@ -14,7 +14,6 @@ use PHPUnit\Framework\TestCase;
 use yii\BaseYii;
 use yii\base\Action;
 use yii\console\Application;
-use yii\console\Response;
 
 class ConsoleCommandLifecycleTest extends TestCase
 {
@@ -109,9 +108,6 @@ class ConsoleCommandLifecycleTest extends TestCase
             'id' => 'test-console-app',
             'basePath' => dirname(__DIR__, 2),
             'components' => [
-                'response' => [
-                    'class' => Response::class,
-                ],
                 'perfbase' => array_merge([
                     'class' => TestPerfbaseComponent::class,
                     'enabled' => true,

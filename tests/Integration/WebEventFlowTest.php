@@ -14,9 +14,6 @@ use yii\base\Action;
 use yii\base\ActionEvent;
 use yii\BaseYii;
 use yii\web\Application;
-use yii\web\Request;
-use yii\web\Response;
-use yii\web\User;
 
 class WebEventFlowTest extends TestCase
 {
@@ -96,21 +93,13 @@ class WebEventFlowTest extends TestCase
             'bootstrap' => ['perfbase'],
             'components' => [
                 'request' => [
-                    'class' => Request::class,
                     'cookieValidationKey' => 'test',
                     'scriptUrl' => '/index.php',
                 ],
-                'response' => [
-                    'class' => Response::class,
-                ],
                 'user' => [
-                    'class' => User::class,
                     'identityClass' => TestIdentity::class,
                     'enableSession' => false,
                     'loginUrl' => null,
-                ],
-                'errorHandler' => [
-                    'class' => \yii\web\ErrorHandler::class,
                 ],
                 'perfbase' => array_merge([
                     'class' => TestPerfbaseComponent::class,

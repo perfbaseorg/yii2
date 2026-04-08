@@ -70,12 +70,6 @@ class ConsoleEventFlowTest extends TestCase
             'basePath' => dirname(__DIR__, 2),
             'bootstrap' => ['perfbase'],
             'components' => [
-                'response' => [
-                    'class' => Response::class,
-                ],
-                'errorHandler' => [
-                    'class' => \yii\console\ErrorHandler::class,
-                ],
                 'perfbase' => array_merge([
                     'class' => TestPerfbaseComponent::class,
                     'enabled' => true,

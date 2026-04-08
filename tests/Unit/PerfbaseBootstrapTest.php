@@ -16,12 +16,7 @@ use yii\base\Action;
 use yii\base\ActionEvent;
 use yii\BaseYii;
 use yii\console\Application as ConsoleApplication;
-use yii\console\ErrorHandler as ConsoleErrorHandler;
 use yii\web\Application as WebApplication;
-use yii\web\ErrorHandler as WebErrorHandler;
-use yii\web\Request;
-use yii\web\Response;
-use yii\web\User;
 
 class PerfbaseBootstrapTest extends TestCase
 {
@@ -115,21 +110,13 @@ class PerfbaseBootstrapTest extends TestCase
             'basePath' => dirname(__DIR__, 2),
             'components' => [
                 'request' => [
-                    'class' => Request::class,
                     'cookieValidationKey' => 'test',
                     'scriptUrl' => '/index.php',
                 ],
-                'response' => [
-                    'class' => Response::class,
-                ],
                 'user' => [
-                    'class' => User::class,
                     'identityClass' => TestIdentity::class,
                     'enableSession' => false,
                     'loginUrl' => null,
-                ],
-                'errorHandler' => [
-                    'class' => WebErrorHandler::class,
                 ],
                 'perfbase' => array_merge([
                     'class' => TestPerfbaseComponent::class,
@@ -151,9 +138,6 @@ class PerfbaseBootstrapTest extends TestCase
             'components' => [
                 'response' => [
                     'class' => GetterConsoleResponse::class,
-                ],
-                'errorHandler' => [
-                    'class' => ConsoleErrorHandler::class,
                 ],
                 'perfbase' => [
                     'class' => TestPerfbaseComponent::class,

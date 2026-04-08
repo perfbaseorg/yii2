@@ -17,8 +17,6 @@ use yii\base\Action;
 use yii\BaseYii;
 use yii\web\Application;
 use yii\web\Request;
-use yii\web\Response;
-use yii\web\User;
 
 class HttpRequestLifecycleTest extends TestCase
 {
@@ -164,20 +162,20 @@ class HttpRequestLifecycleTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
         $_SERVER['HTTP_USER_AGENT'] = 'PHPUnit';
 
+        $requestConfig = [
+            'cookieValidationKey' => 'test',
+            'scriptUrl' => '/index.php',
+        ];
+        if ($requestClass !== Request::class) {
+            $requestConfig['class'] = $requestClass;
+        }
+
         return new Application([
             'id' => 'test-web-app',
             'basePath' => dirname(__DIR__, 2),
             'components' => [
-                'request' => [
-                    'class' => $requestClass,
-                    'cookieValidationKey' => 'test',
-                    'scriptUrl' => '/index.php',
-                ],
-                'response' => [
-                    'class' => Response::class,
-                ],
+                'request' => $requestConfig,
                 'user' => [
-                    'class' => User::class,
                     'identityClass' => TestIdentity::class,
                     'enableSession' => false,
                     'loginUrl' => null,
