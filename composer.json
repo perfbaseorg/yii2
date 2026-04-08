@@ -1,0 +1,69 @@
+{
+  "name": "perfbase/yii2",
+  "description": "Yii 2 integration for the Perfbase profiling tool.",
+  "keywords": [
+    "perfbase",
+    "yii2",
+    "profiling",
+    "apm",
+    "monitoring"
+  ],
+  "homepage": "https://github.com/perfbaseorg/yii2",
+  "support": {
+    "issues": "https://github.com/perfbaseorg/yii2/issues",
+    "source": "https://github.com/perfbaseorg/yii2"
+  },
+  "type": "library",
+  "license": "Apache-2.0",
+  "authors": [
+    {
+      "name": "Ben Poulson",
+      "email": "ben.poulson@perfbase.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4 <8.5",
+    "perfbase/php-sdk": "^1.0",
+    "yiisoft/yii2": "^2.0.45"
+  },
+  "require-dev": {
+    "mockery/mockery": "^1.6",
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^9"
+  },
+  "autoload": {
+    "psr-4": {
+      "Perfbase\\Yii2\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Perfbase\\Yii2\\Tests\\": "tests/"
+    }
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../lib-php-sdk",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "perfbase/php-sdk": "1.0.0"
+        }
+      }
+    }
+  ],
+  "scripts": {
+    "lint": "composer run-script phpstan && composer run-script test",
+    "test": "phpunit",
+    "phpstan": "phpstan analyse --memory-limit=2G --debug"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "config": {
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true
+    },
+    "sort-packages": true
+  }
+}

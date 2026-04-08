@@ -1,0 +1,9 @@
+parameters:
+    level: 8
+    paths:
+        - src
+        - tests
+    scanFiles:
+        - vendor/yiisoft/yii2/Yii.php
+    parallel:
+        maximumNumberOfProcesses: 1
