@@ -90,15 +90,16 @@ class SpanNamingTest extends TestCase
         $_SERVER['HTTP_HOST'] = 'example.com';
         $_SERVER['HTTPS'] = 'on';
 
+        $request = new $requestClass([
+            'cookieValidationKey' => 'test',
+            'scriptUrl' => '/index.php',
+        ]);
+
         return new WebApplication([
             'id' => 'test-web-app-span',
             'basePath' => dirname(__DIR__, 2),
             'components' => [
-                'request' => [
-                    'class' => $requestClass,
-                    'cookieValidationKey' => 'test',
-                    'scriptUrl' => '/index.php',
-                ],
+                'request' => $request,
             ],
         ]);
     }
