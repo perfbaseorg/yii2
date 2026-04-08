@@ -1,8 +1,23 @@
-# Perfbase for Yii2
+<p align="center">
+  <a href="https://perfbase.com">
+    <img src="https://cdn.perfbase.com/img/logo-full.svg" alt="Perfbase" width="300">
+  </a>
+</p>
 
-`perfbase/yii2` is the Yii 2 adapter for Perfbase.
+<h3 align="center">Perfbase for Yii 2</h3>
+<p align="center">
+  Yii 2 integration for <a href="https://perfbase.com">Perfbase</a>.
+</p>
 
-It is intentionally thin: framework wiring lives here, transport and extension access stay in `perfbase/php-sdk`.
+<p align="center">
+  <a href="https://packagist.org/packages/perfbase/yii2"><img src="https://img.shields.io/packagist/v/perfbase/yii2" alt="Packagist Version"></a>
+  <a href="https://github.com/perfbaseorg/yii2/blob/main/LICENSE.txt"><img src="https://img.shields.io/packagist/l/perfbase/yii2" alt="License"></a>
+  <a href="https://github.com/perfbaseorg/yii2/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/perfbaseorg/yii2/ci.yml?branch=main" alt="CI"></a>
+  <img src="https://img.shields.io/badge/php-7.4%2B-blue" alt="PHP Version">
+  <img src="https://img.shields.io/badge/yii-2.x-blue" alt="Yii Version">
+</p>
+
+This package is a thin adapter over [`perfbase/php-sdk`](https://packagist.org/packages/perfbase/php-sdk). Framework wiring lives here; transport and extension access stay in the shared SDK.
 
 ## Scope
 
@@ -202,6 +217,18 @@ composer run phpstan
 
 ## Limitations
 
-- queue workers are out of scope for v1
-- no profiler toolbar or Yii-specific UI
-- exit code capture for console commands depends on what the Yii2 response object exposes
+- Queue workers are out of scope for v1
+- No profiler toolbar or Yii-specific UI
+- Exit code capture for console commands depends on what the Yii 2 response object exposes
+
+## Documentation
+
+Full documentation is available at [perfbase.com/docs](https://perfbase.com/docs).
+
+- **Docs**: [perfbase.com/docs](https://perfbase.com/docs)
+- **Issues**: [github.com/perfbaseorg/yii2/issues](https://github.com/perfbaseorg/yii2/issues)
+- **Support**: [support@perfbase.com](mailto:support@perfbase.com)
+
+## License
+
+Apache-2.0. See [LICENSE.txt](LICENSE.txt).
