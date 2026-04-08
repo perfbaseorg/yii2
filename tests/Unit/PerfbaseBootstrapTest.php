@@ -136,9 +136,7 @@ class PerfbaseBootstrapTest extends TestCase
             'basePath' => dirname(__DIR__, 2),
             'bootstrap' => ['perfbase'],
             'components' => [
-                'response' => [
-                    'class' => GetterConsoleResponse::class,
-                ],
+                'response' => new GetterConsoleResponse(),
                 'perfbase' => [
                     'class' => TestPerfbaseComponent::class,
                     'enabled' => true,

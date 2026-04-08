@@ -162,19 +162,16 @@ class HttpRequestLifecycleTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
         $_SERVER['HTTP_USER_AGENT'] = 'PHPUnit';
 
-        $requestConfig = [
+        $request = new $requestClass([
             'cookieValidationKey' => 'test',
             'scriptUrl' => '/index.php',
-        ];
-        if ($requestClass !== Request::class) {
-            $requestConfig['class'] = $requestClass;
-        }
+        ]);
 
         return new Application([
             'id' => 'test-web-app',
             'basePath' => dirname(__DIR__, 2),
             'components' => [
-                'request' => $requestConfig,
+                'request' => $request,
                 'user' => [
                     'identityClass' => TestIdentity::class,
                     'enableSession' => false,
