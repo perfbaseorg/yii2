@@ -192,20 +192,7 @@ Primary entry points:
 
 This package does not implement its own buffering, retry, or persistence layer.
 
-## Local Development
-
-Local development uses the sibling SDK checkout:
-
-```json
-{
-  "repositories": [
-    {
-      "type": "path",
-      "url": "../lib-php-sdk"
-    }
-  ]
-}
-```
+## Development
 
 Verify locally with:
 
