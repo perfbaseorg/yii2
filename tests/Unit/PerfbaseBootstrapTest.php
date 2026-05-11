@@ -43,7 +43,7 @@ class PerfbaseBootstrapTest extends TestCase
         $app->trigger(WebApplication::EVENT_BEFORE_ACTION, new ActionEvent($action));
         $app->trigger(WebApplication::EVENT_AFTER_REQUEST);
 
-        self::assertSame(['http.GET./site/index'], $client->startedSpans);
+        self::assertSame(['http'], $client->startedSpans);
         self::assertSame(1, $client->submitCalls);
     }
 

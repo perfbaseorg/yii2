@@ -23,7 +23,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestWebController('articles', $app);
         $action = new Action('view', $controller);
 
-        self::assertSame('http.GET./articles/view', SpanNaming::forHttp($app, $action));
+        self::assertSame('http', SpanNaming::forHttp($app, $action));
     }
 
     public function test_http_falls_back_to_request_path(): void
@@ -32,7 +32,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestWebController('', $app);
         $action = new Action('', $controller);
 
-        self::assertSame('http.GET./raw/path', SpanNaming::forHttp($app, $action));
+        self::assertSame('http', SpanNaming::forHttp($app, $action));
     }
 
     public function test_console_span_name_is_stable(): void
@@ -41,7 +41,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestConsoleController('migrate', $app);
         $action = new Action('up', $controller);
 
-        self::assertSame('console.migrate/up', SpanNaming::forConsole($app, $action));
+        self::assertSame('artisan', SpanNaming::forConsole($app, $action));
     }
 
     public function test_http_falls_back_to_server_request_uri_when_request_url_is_empty(): void
@@ -50,7 +50,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestWebController('', $app);
         $action = new Action('', $controller);
 
-        self::assertSame('http.GET./server/fallback', SpanNaming::forHttp($app, $action));
+        self::assertSame('http', SpanNaming::forHttp($app, $action));
     }
 
     public function test_console_falls_back_to_unknown_when_requested_route_is_empty(): void
@@ -60,7 +60,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestConsoleController('', $app);
         $action = new Action('', $controller);
 
-        self::assertSame('console.unknown', SpanNaming::forConsole($app, $action));
+        self::assertSame('artisan', SpanNaming::forConsole($app, $action));
     }
 
     public function test_http_falls_back_to_path_info_when_other_request_sources_are_empty(): void
@@ -73,7 +73,7 @@ class SpanNamingTest extends TestCase
             $controller = new TestWebController('', $app);
             $action = new Action('', $controller);
 
-            self::assertSame('http.GET./pathinfo-only', SpanNaming::forHttp($app, $action));
+            self::assertSame('http', SpanNaming::forHttp($app, $action));
         } finally {
             if ($previousUri === null) {
                 unset($_SERVER['REQUEST_URI']);
@@ -81,6 +81,18 @@ class SpanNamingTest extends TestCase
                 $_SERVER['REQUEST_URI'] = $previousUri;
             }
         }
+    }
+
+    public function test_generated_span_names_are_sdk_safe(): void
+    {
+        $app = $this->createConsoleApplication();
+        $app->requestedRoute = 'cache/flush --verbose with a very long command name';
+        $controller = new TestConsoleController('', $app);
+        $action = new Action('', $controller);
+        $span = SpanNaming::forConsole($app, $action);
+
+        self::assertMatchesRegularExpression('/^[A-Za-z]+$/', $span);
+        self::assertLessThanOrEqual(64, strlen($span));
     }
 
     private function createWebApplication(string $uri = '/articles/42', string $requestClass = \yii\web\Request::class): WebApplication

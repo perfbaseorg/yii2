@@ -18,6 +18,7 @@ class PerfbaseComponentTest extends TestCase
         self::assertSame(0.1, $config['sample_rate']);
         self::assertSame(['*'], $config['include']['http']);
         self::assertSame([], $config['exclude']['console']);
+        self::assertSame([...range(200, 299), ...range(500, 599)], $config['profile_http_status_codes']);
         self::assertSame('test', $component->getEnvironment());
     }
 
@@ -28,6 +29,7 @@ class PerfbaseComponentTest extends TestCase
             'api_key' => 'test-key',
             'sample_rate' => 1.0,
             'app_version' => '1.2.3',
+            'profile_http_status_codes' => [200, 404],
             'include' => [
                 'http' => ['GET /health'],
                 'console' => ['migrate/*'],
@@ -40,6 +42,7 @@ class PerfbaseComponentTest extends TestCase
         self::assertSame('test-key', $config['api_key']);
         self::assertSame(1.0, $config['sample_rate']);
         self::assertSame('1.2.3', $config['app_version']);
+        self::assertSame([200, 404], $config['profile_http_status_codes']);
         self::assertSame(['GET /health'], $config['include']['http']);
         self::assertSame(['migrate/*'], $config['include']['console']);
     }

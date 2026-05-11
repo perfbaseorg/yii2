@@ -39,7 +39,7 @@ class ConsoleCommandLifecycleTest extends TestCase
         $lifecycle->setException(new \RuntimeException('failed'));
         $lifecycle->stopProfiling();
 
-        self::assertSame(['console.migrate/up'], $client->startedSpans);
+        self::assertSame(['artisan'], $client->startedSpans);
         self::assertSame('console', $client->attributes['source']);
         self::assertSame('migrate/up', $client->attributes['action']);
         self::assertSame('2', $client->attributes['exit_code']);
@@ -95,7 +95,7 @@ class ConsoleCommandLifecycleTest extends TestCase
         $lifecycle->startProfiling();
         $lifecycle->stopProfiling();
 
-        self::assertSame(['console.cache/flush'], $client->startedSpans);
+        self::assertSame(['artisan'], $client->startedSpans);
         self::assertSame('cache/flush', $client->attributes['action']);
     }
 

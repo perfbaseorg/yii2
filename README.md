@@ -75,6 +75,7 @@ The same component can be registered in web and console app configs.
     'api_key' => '',
     'api_url' => 'https://ingress.perfbase.cloud',
     'sample_rate' => 0.1,
+    'profile_http_status_codes' => [...range(200, 299), ...range(500, 599)],
     'timeout' => 10,
     'proxy' => null,
     'flags' => \Perfbase\SDK\FeatureFlags::DefaultFlags,
@@ -93,6 +94,7 @@ The same component can be registered in web and console app configs.
 Notes:
 
 - `sample_rate` must be numeric between `0.0` and `1.0`
+- `profile_http_status_codes` defaults to `[...range(200, 299), ...range(500, 599)]`. Add codes such as `404` if you want to keep them, or set it to `[]` to disable HTTP trace submission entirely.
 - `environment` is derived from `YII_ENV`, otherwise `production`
 - `app_version` is application-defined
 
@@ -123,6 +125,7 @@ Behavior details:
 
 - action naming prefers stable route/controller identifiers
 - `http_url` excludes query strings
+- HTTP traces are only submitted when the response status code is in `profile_http_status_codes`
 - profiling is skipped when filters fail or the extension is unavailable
 
 ## Console Profiling

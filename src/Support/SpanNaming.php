@@ -13,24 +13,12 @@ class SpanNaming
 {
     public static function forHttp(WebApplication $app, Action $action): string
     {
-        $route = $action->getUniqueId();
-        if (!self::hasStableRoute($route)) {
-            $route = self::requestPath($app->getRequest());
-        } else {
-            $route = self::normalizePath($route);
-        }
-
-        return sprintf('http.%s.%s', $app->getRequest()->getMethod(), $route);
+        return 'http';
     }
 
     public static function forConsole(ConsoleApplication $app, Action $action): string
     {
-        $command = $action->getUniqueId();
-        if (!self::hasStableRoute($command)) {
-            $command = $app->requestedRoute ?: 'unknown';
-        }
-
-        return sprintf('console.%s', $command);
+        return 'artisan';
     }
 
     private static function normalizePath(string $path): string
@@ -58,5 +46,15 @@ class SpanNaming
         }
 
         return self::normalizePath($request->getPathInfo());
+    }
+
+    private static function normalizeSpanName(string $spanName): string
+    {
+        $spanName = strtolower($spanName);
+        $spanName = preg_replace('/[^a-z0-9_-]+/', '_', $spanName) ?? 'unknown';
+        $spanName = preg_replace('/_+/', '_', $spanName) ?? 'unknown';
+        $spanName = trim($spanName, '_');
+
+        return substr($spanName !== '' ? $spanName : 'unknown', 0, 64);
     }
 }

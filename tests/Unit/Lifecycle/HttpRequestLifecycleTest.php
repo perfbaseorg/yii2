@@ -42,14 +42,72 @@ class HttpRequestLifecycleTest extends TestCase
         $lifecycle->setResponseStatusCode(201);
         $lifecycle->stopProfiling();
 
-        self::assertSame(['http.GET./articles/view'], $client->startedSpans);
-        self::assertSame(['http.GET./articles/view'], $client->stoppedSpans);
+        self::assertSame(['http'], $client->startedSpans);
+        self::assertSame(['http'], $client->stoppedSpans);
         self::assertSame(1, $client->submitCalls);
         self::assertSame('GET /articles/view', $client->attributes['action']);
         self::assertSame('https://example.com/articles/42', $client->attributes['http_url']);
         self::assertSame('201', $client->attributes['http_status_code']);
         self::assertSame('user-123', $client->attributes['user_id']);
         self::assertSame('http', $client->attributes['source']);
+    }
+
+    public function test_disallowed_http_status_code_is_not_submitted_by_default(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createWebApplication();
+        $controller = new TestWebController('articles', $app);
+        $action = new Action('view', $controller);
+
+        $lifecycle = new HttpRequestLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->setResponseStatusCode(404);
+        $lifecycle->stopProfiling();
+
+        self::assertSame(0, $client->submitCalls);
+        self::assertSame(1, $client->resetCalls);
+        self::assertSame('404', $client->attributes['http_status_code']);
+    }
+
+    public function test_server_error_status_code_is_submitted_by_default(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createWebApplication();
+        $controller = new TestWebController('articles', $app);
+        $action = new Action('view', $controller);
+
+        $lifecycle = new HttpRequestLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->setResponseStatusCode(503);
+        $lifecycle->stopProfiling();
+
+        self::assertSame(1, $client->submitCalls);
+        self::assertSame(0, $client->resetCalls);
+        self::assertSame('503', $client->attributes['http_status_code']);
+    }
+
+    public function test_custom_allowed_http_status_code_is_submitted(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createWebApplication([
+            'profile_http_status_codes' => [200, 404],
+        ]);
+        $controller = new TestWebController('articles', $app);
+        $action = new Action('view', $controller);
+
+        $lifecycle = new HttpRequestLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->setResponseStatusCode(404);
+        $lifecycle->stopProfiling();
+
+        self::assertSame(1, $client->submitCalls);
+        self::assertSame(0, $client->resetCalls);
     }
 
     public function test_excluded_http_request_is_not_profiled(): void
@@ -117,7 +175,7 @@ class HttpRequestLifecycleTest extends TestCase
         $lifecycle->startProfiling();
         $lifecycle->stopProfiling();
 
-        self::assertSame(['http.GET./articles/42'], $client->startedSpans);
+        self::assertSame(['http'], $client->startedSpans);
         self::assertSame('GET /articles/42', $client->attributes['action']);
     }
 
@@ -138,7 +196,7 @@ class HttpRequestLifecycleTest extends TestCase
             $lifecycle->startProfiling();
             $lifecycle->stopProfiling();
 
-            self::assertSame(['http.GET./pathinfo-only'], $client->startedSpans);
+            self::assertSame(['http'], $client->startedSpans);
             self::assertSame('GET /pathinfo-only', $client->attributes['action']);
             self::assertSame('https://example.com/pathinfo-only', $client->attributes['http_url']);
         } finally {
@@ -181,6 +239,7 @@ class HttpRequestLifecycleTest extends TestCase
                     'class' => TestPerfbaseComponent::class,
                     'enabled' => true,
                     'sample_rate' => 1.0,
+                    'profile_http_status_codes' => [...range(200, 299), ...range(500, 599)],
                     'api_key' => 'test-key',
                     'app_version' => '1.2.3',
                 ], $perfbaseConfig),

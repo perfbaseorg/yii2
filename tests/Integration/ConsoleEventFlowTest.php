@@ -37,7 +37,7 @@ class ConsoleEventFlowTest extends TestCase
         $app->trigger(Application::EVENT_BEFORE_ACTION, new ActionEvent($action));
         $app->trigger(Application::EVENT_AFTER_REQUEST);
 
-        self::assertSame(['console.migrate/up'], $client->startedSpans);
+        self::assertSame(['artisan'], $client->startedSpans);
         self::assertSame('migrate/up', $client->attributes['action']);
         self::assertSame(1, $client->submitCalls);
     }
