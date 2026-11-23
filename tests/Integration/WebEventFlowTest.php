@@ -9,6 +9,7 @@ use Perfbase\Yii2\Tests\Fixtures\TestIdentity;
 use Perfbase\Yii2\Tests\Fixtures\TestPerfbaseClientProvider;
 use Perfbase\Yii2\Tests\Fixtures\TestPerfbaseComponent;
 use Perfbase\Yii2\Tests\Fixtures\TestWebController;
+use Perfbase\SDK\Exception\PerfbaseException;
 use PHPUnit\Framework\TestCase;
 use yii\base\Action;
 use yii\base\ActionEvent;
@@ -98,6 +99,23 @@ class WebEventFlowTest extends TestCase
         self::assertSame(0, $client->submitCalls);
     }
 
+    public function test_submit_exception_does_not_escape_the_request(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        $client->submitException = new PerfbaseException('extension returned no data');
+        TestPerfbaseClientProvider::$client = $client;
+        $app = $this->createApplication(['log_errors' => false]);
+
+        $controller = new TestWebController('site', $app);
+        $action = new Action('index', $controller);
+
+        $app->trigger(Application::EVENT_BEFORE_ACTION, new ActionEvent($action));
+        $app->trigger(Application::EVENT_AFTER_REQUEST);
+
+        self::assertSame(1, $client->submitCalls);
+        self::assertSame(['http'], $client->stoppedSpans);
+    }
+
     /**
      * @param array<string, mixed> $perfbaseConfig
      */
@@ -139,6 +157,6 @@ class WebEventFlowTest extends TestCase
     private function resetYiiApplication(): void
     {
         $property = new \ReflectionProperty(BaseYii::class, 'app');
-        $property->setValue(null);
+        $property->setValue(null, null);
     }
 }

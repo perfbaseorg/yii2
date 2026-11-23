@@ -8,13 +8,33 @@ on:
 
 jobs:
   php-tests:
-    name: PHPStan and PHPUnit on PHP ${{ matrix.php-version }}
+    name: PHPStan and PHPUnit on PHP ${{ matrix.php-version }} / Yii ${{ matrix.yii-version }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        php-version: ["7.4", "8.4"]
+        include:
+          # Oldest supported Yii 2 release (it has known security advisories,
+          # so Composer's advisory blocking is disabled for resolution).
+          - php-version: '7.4'
+            yii-version: '2.0.45'
+          - php-version: '7.4'
+            yii-version: '~2.0.55'
+          - php-version: '8.0'
+            yii-version: '~2.0.55'
+          - php-version: '8.1'
+            yii-version: '~2.0.55'
+          - php-version: '8.2'
+            yii-version: '~2.0.55'
+          - php-version: '8.3'
+            yii-version: '~2.0.55'
+          - php-version: '8.4'
+            yii-version: '~2.0.55'
+          - php-version: '8.5'
+            yii-version: '~2.0.55'
+          - php-version: '8.6'
+            yii-version: '~2.0.55'
 
     steps:
       - name: Checkout yii2
@@ -31,9 +51,16 @@ jobs:
       - name: Install Perfbase extension
         run: bash -c "$(curl -fsSL https://cdn.perfbase.com/install.sh)"
 
-      - name: Install dependencies
+      # Yii 2.0.x depends on bower-asset/* packages, which are only published on
+      # asset-packagist. Without it Composer silently falls back to the
+      # unreleased 2.2.x-dev branch.
+      - name: Add asset-packagist repository
         working-directory: yii2
-        run: composer install --prefer-dist --no-progress
+        run: composer config repositories.asset-packagist composer https://asset-packagist.org
+
+      - name: Resolve Yii ${{ matrix.yii-version }}
+        working-directory: yii2
+        run: composer update --with "yiisoft/yii2:${{ matrix.yii-version }}" --no-security-blocking --prefer-dist --no-progress
 
       - name: Run PHPStan
         working-directory: yii2

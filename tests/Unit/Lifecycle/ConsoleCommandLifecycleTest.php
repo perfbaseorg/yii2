@@ -10,6 +10,7 @@ use Perfbase\Yii2\Tests\Fixtures\RecordingPerfbaseClient;
 use Perfbase\Yii2\Tests\Fixtures\TestConsoleController;
 use Perfbase\Yii2\Tests\Fixtures\TestPerfbaseClientProvider;
 use Perfbase\Yii2\Tests\Fixtures\TestPerfbaseComponent;
+use Perfbase\Yii2\Tests\Fixtures\TestQueueCommand;
 use PHPUnit\Framework\TestCase;
 use yii\BaseYii;
 use yii\base\Action;
@@ -39,7 +40,7 @@ class ConsoleCommandLifecycleTest extends TestCase
         $lifecycle->setException(new \RuntimeException('failed'));
         $lifecycle->stopProfiling();
 
-        self::assertSame(['artisan'], $client->startedSpans);
+        self::assertSame(['cli'], $client->startedSpans);
         self::assertSame('console', $client->attributes['source']);
         self::assertSame('migrate/up', $client->attributes['action']);
         self::assertSame('2', $client->attributes['exit_code']);
@@ -95,8 +96,76 @@ class ConsoleCommandLifecycleTest extends TestCase
         $lifecycle->startProfiling();
         $lifecycle->stopProfiling();
 
-        self::assertSame(['artisan'], $client->startedSpans);
+        self::assertSame(['cli'], $client->startedSpans);
         self::assertSame('cache/flush', $client->attributes['action']);
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public function longRunningCommandProvider(): array
+    {
+        return [
+            'queue listen' => ['queue', 'listen'],
+            'queue run' => ['queue', 'run'],
+            'dev server' => ['serve', 'index'],
+        ];
+    }
+
+    /**
+     * @dataProvider longRunningCommandProvider
+     */
+    public function test_long_running_commands_are_excluded_by_default(string $controllerId, string $actionId): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createConsoleApplication();
+        $controller = new TestConsoleController($controllerId, $app);
+        $action = new Action($actionId, $controller);
+
+        $lifecycle = new ConsoleCommandLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->stopProfiling();
+
+        self::assertSame([], $client->startedSpans);
+    }
+
+    public function test_queue_worker_registered_under_custom_id_is_excluded_by_default(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createConsoleApplication([
+            'exclude' => ['http' => ['/health']],
+        ]);
+        $controller = new TestQueueCommand('mail-queue', $app);
+        $action = new Action('listen', $controller);
+
+        $lifecycle = new ConsoleCommandLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->stopProfiling();
+
+        self::assertSame([], $client->startedSpans);
+    }
+
+    public function test_queue_worker_can_be_opted_back_in(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createConsoleApplication([
+            'exclude' => ['http' => [], 'console' => []],
+        ]);
+        $controller = new TestConsoleController('queue', $app);
+        $action = new Action('run', $controller);
+
+        $lifecycle = new ConsoleCommandLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->stopProfiling();
+
+        self::assertSame(['cli'], $client->startedSpans);
+        self::assertSame('queue/run', $client->attributes['action']);
     }
 
     /**
@@ -128,6 +197,6 @@ class ConsoleCommandLifecycleTest extends TestCase
     private function resetYiiApplication(): void
     {
         $property = new \ReflectionProperty(BaseYii::class, 'app');
-        $property->setValue(null);
+        $property->setValue(null, null);
     }
 }

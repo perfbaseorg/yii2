@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Perfbase\Yii2\Tests\Unit\Support;
 
 use Perfbase\SDK\Config;
+use Perfbase\SDK\FeatureFlags;
 use Perfbase\SDK\Perfbase;
 use Perfbase\Yii2\Support\PerfbaseClientProvider;
 use Perfbase\Yii2\Support\PerfbaseErrorHandler;
@@ -33,8 +34,11 @@ class PerfbaseClientProviderTest extends TestCase
             }
         );
 
-        self::assertSame($expectedClient, $provider->getClient());
-        self::assertSame($expectedClient, $provider->getClient());
+        $first = $provider->getClient();
+        $second = $provider->getClient();
+
+        self::assertSame($expectedClient, $first);
+        self::assertSame($first, $second);
         self::assertSame(1, $created);
     }
 
@@ -113,7 +117,7 @@ class PerfbaseClientProviderTest extends TestCase
 
         self::assertInstanceOf(Config::class, $capturedConfig);
         self::assertSame('https://ingress.perfbase.cloud', $capturedConfig->getApiUrl());
-        self::assertSame(0, $capturedConfig->getFlags());
+        self::assertSame(FeatureFlags::DefaultFlags, $capturedConfig->getFlags());
         self::assertSame(10, $capturedConfig->getTimeout());
         self::assertNull($capturedConfig->getProxy());
     }

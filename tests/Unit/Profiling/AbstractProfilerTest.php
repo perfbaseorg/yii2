@@ -9,6 +9,7 @@ use Perfbase\Yii2\Support\PerfbaseClientProvider;
 use Perfbase\Yii2\Support\PerfbaseErrorHandler;
 use Perfbase\Yii2\Tests\Fixtures\RecordingPerfbaseClient;
 use Perfbase\Yii2\Tests\Fixtures\TestProfiler;
+use Perfbase\SDK\Exception\PerfbaseException;
 use PHPUnit\Framework\TestCase;
 
 class AbstractProfilerTest extends TestCase
@@ -144,6 +145,19 @@ class AbstractProfilerTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $profiler->stopProfiling();
+    }
+
+    public function test_stop_profiling_swallows_submit_exceptions_outside_debug_mode(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        $client->submitException = new PerfbaseException('extension returned no data');
+        $profiler = new TestProfiler($this->makeProvider($client), new PerfbaseErrorHandler(false, false), ['sample_rate' => 1.0]);
+
+        $profiler->startProfiling();
+        $profiler->stopProfiling();
+
+        self::assertSame(1, $client->submitCalls);
+        self::assertFalse($profiler->hasStarted());
     }
 
     private function makeProvider(RecordingPerfbaseClient $client): PerfbaseClientProvider

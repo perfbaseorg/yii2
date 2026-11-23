@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Perfbase\Yii2\Support;
 
 use Perfbase\SDK\Config;
+use Perfbase\SDK\FeatureFlags;
 use Perfbase\SDK\Perfbase;
 
 class PerfbaseClientProvider
@@ -43,11 +44,11 @@ class PerfbaseClientProvider
 
         try {
             $sdkConfig = Config::fromArray([
-                'api_key' => (string) ($this->config['api_key'] ?? ''),
-                'api_url' => (string) ($this->config['api_url'] ?? 'https://ingress.perfbase.cloud'),
-                'flags' => (int) ($this->config['flags'] ?? 0),
-                'timeout' => (int) ($this->config['timeout'] ?? 10),
-                'proxy' => $this->normalizeProxy($this->config['proxy'] ?? null),
+                'api_key' => ConfigNormalizer::string($this->config['api_key'] ?? null),
+                'api_url' => ConfigNormalizer::string($this->config['api_url'] ?? null, 'https://ingress.perfbase.cloud'),
+                'flags' => ConfigNormalizer::int($this->config['flags'] ?? null, FeatureFlags::DefaultFlags),
+                'timeout' => ConfigNormalizer::int($this->config['timeout'] ?? null, 10),
+                'proxy' => ConfigNormalizer::stringOrNull($this->config['proxy'] ?? null),
             ]);
 
             $factory = $this->clientFactory;
@@ -64,17 +65,5 @@ class PerfbaseClientProvider
         }
 
         return $this->client;
-    }
-
-    /**
-     * @param mixed $proxy
-     */
-    private function normalizeProxy($proxy): ?string
-    {
-        if (!is_string($proxy) || $proxy === '') {
-            return null;
-        }
-
-        return $proxy;
     }
 }

@@ -46,7 +46,7 @@ class HttpRequestLifecycleTest extends TestCase
         self::assertSame(['http'], $client->stoppedSpans);
         self::assertSame(1, $client->submitCalls);
         self::assertSame('GET /articles/view', $client->attributes['action']);
-        self::assertSame('https://example.com/articles/42', $client->attributes['http_url']);
+        self::assertSame('https://example.com/articles/42?token=REDACTED', $client->attributes['http_url']);
         self::assertSame('201', $client->attributes['http_status_code']);
         self::assertSame('user-123', $client->attributes['user_id']);
         self::assertSame('http', $client->attributes['source']);
@@ -208,6 +208,58 @@ class HttpRequestLifecycleTest extends TestCase
         }
     }
 
+    public function test_http_url_keeps_query_string_and_redacts_credentials(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createWebApplication([], Request::class, '/ajax.php?method=example&token=secret');
+        $controller = new TestWebController('ajax', $app);
+        $action = new Action('', $controller);
+
+        $lifecycle = new HttpRequestLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->stopProfiling();
+
+        self::assertSame('https://example.com/ajax.php?method=example&token=REDACTED', $client->attributes['http_url']);
+        self::assertStringNotContainsString('?', $client->attributes['action']);
+    }
+
+    public function test_profiler_does_not_instantiate_the_user_component(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createWebApplication();
+        $controller = new TestWebController('articles', $app);
+        $action = new Action('view', $controller);
+
+        $lifecycle = new HttpRequestLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $lifecycle->stopProfiling();
+
+        self::assertFalse($app->has('user', true));
+        self::assertArrayNotHasKey('user_id', $client->attributes);
+        self::assertSame(1, $client->submitCalls);
+    }
+
+    public function test_user_logged_in_during_the_request_is_recorded(): void
+    {
+        $client = new RecordingPerfbaseClient();
+        TestPerfbaseClientProvider::$client = $client;
+
+        $app = $this->createWebApplication();
+        $controller = new TestWebController('articles', $app);
+        $action = new Action('view', $controller);
+
+        $lifecycle = new HttpRequestLifecycle($app, $action, $this->getPerfbaseComponent($app));
+        $lifecycle->startProfiling();
+        $app->getUser()->switchIdentity(new TestIdentity('user-456'));
+        $lifecycle->stopProfiling();
+
+        self::assertSame('user-456', $client->attributes['user_id']);
+    }
+
     /**
      * @param array<string, mixed> $perfbaseConfig
      */
@@ -256,6 +308,6 @@ class HttpRequestLifecycleTest extends TestCase
     private function resetYiiApplication(): void
     {
         $property = new \ReflectionProperty(BaseYii::class, 'app');
-        $property->setValue(null);
+        $property->setValue(null, null);
     }
 }

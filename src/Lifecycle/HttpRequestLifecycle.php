@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Perfbase\Yii2\Lifecycle;
 
 use Perfbase\SDK\Utils\EnvironmentUtils;
+use Perfbase\SDK\Utils\UrlSanitizer;
 use Perfbase\Yii2\PerfbaseComponent;
 use Perfbase\Yii2\Profiling\AbstractProfiler;
 use Perfbase\Yii2\Support\FilterMatcher;
@@ -12,6 +13,7 @@ use Perfbase\Yii2\Support\SpanNaming;
 use yii\base\Action;
 use yii\web\Application;
 use yii\web\Request;
+use yii\web\User;
 
 class HttpRequestLifecycle extends AbstractProfiler
 {
@@ -66,19 +68,37 @@ class HttpRequestLifecycle extends AbstractProfiler
             'source' => 'http',
             'action' => sprintf('%s %s', $request->getMethod(), $route),
             'http_method' => $request->getMethod(),
-            'http_url' => $request->getHostInfo() . $path,
+            'http_url' => $this->requestUrl($request, $path),
             'user_ip' => (string) (EnvironmentUtils::getUserIp() ?? ''),
             'user_agent' => (string) (EnvironmentUtils::getUserUserAgent() ?? ''),
         ]);
+    }
 
-        if ($this->app->has('user')) {
-            $user = $this->app->get('user');
-            if ($user !== null && method_exists($user, 'getIsGuest') && !$user->getIsGuest() && method_exists($user, 'getId')) {
-                $identifier = $user->getId();
-                if ($identifier !== null && $identifier !== '') {
-                    $this->setAttribute('user_id', (string) $identifier);
-                }
-            }
+    /**
+     * Reads the identity only when the application already instantiated the
+     * user component, and without auto-renewal: resolving the identity
+     * ourselves would open the session (sending a session cookie) and may run
+     * cookie-login queries on requests that never touched the user.
+     */
+    protected function collectFinalAttributes(): void
+    {
+        if (!$this->app->has('user', true)) {
+            return;
+        }
+
+        $user = $this->app->get('user');
+        if (!$user instanceof User) {
+            return;
+        }
+
+        $identity = $user->getIdentity(false);
+        if ($identity === null) {
+            return;
+        }
+
+        $identifier = (string) $identity->getId();
+        if ($identifier !== '') {
+            $this->setAttribute('user_id', $identifier);
         }
     }
 
@@ -163,6 +183,27 @@ class HttpRequestLifecycle extends AbstractProfiler
     private function hasStableRoute(string $route): bool
     {
         return trim($route, '/') !== '';
+    }
+
+    /**
+     * Full request URL. The query string is kept because it often identifies
+     * the operation (`?r=site/page`); credential-looking parameter values are
+     * redacted by the SDK.
+     */
+    private function requestUrl(Request $request, string $path): string
+    {
+        $url = $request->getHostInfo() . $path;
+
+        $query = parse_url($request->getUrl(), PHP_URL_QUERY);
+        if (!is_string($query) || $query === '') {
+            $query = $request->getQueryString();
+        }
+
+        if ($query !== '') {
+            $url .= '?' . $query;
+        }
+
+        return UrlSanitizer::sanitize($url);
     }
 
     private function requestPath(Request $request): string

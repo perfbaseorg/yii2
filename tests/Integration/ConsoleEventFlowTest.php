@@ -37,7 +37,7 @@ class ConsoleEventFlowTest extends TestCase
         $app->trigger(Application::EVENT_BEFORE_ACTION, new ActionEvent($action));
         $app->trigger(Application::EVENT_AFTER_REQUEST);
 
-        self::assertSame(['artisan'], $client->startedSpans);
+        self::assertSame(['cli'], $client->startedSpans);
         self::assertSame('migrate/up', $client->attributes['action']);
         self::assertSame(1, $client->submitCalls);
     }
@@ -84,6 +84,6 @@ class ConsoleEventFlowTest extends TestCase
     private function resetYiiApplication(): void
     {
         $property = new \ReflectionProperty(BaseYii::class, 'app');
-        $property->setValue(null);
+        $property->setValue(null, null);
     }
 }

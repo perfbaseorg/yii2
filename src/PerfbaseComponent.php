@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Perfbase\Yii2;
 
 use Perfbase\SDK\FeatureFlags;
+use Perfbase\Yii2\Support\ConfigNormalizer;
 use Perfbase\Yii2\Support\PerfbaseClientProvider;
 use Perfbase\Yii2\Support\PerfbaseErrorHandler;
 use yii\base\Application;
@@ -13,30 +14,58 @@ use yii\base\Component;
 
 class PerfbaseComponent extends Component implements BootstrapInterface
 {
-    public bool $enabled = false;
-    public bool $debug = false;
-    public bool $log_errors = true;
-    public string $api_key = '';
-    public string $api_url = 'https://ingress.perfbase.cloud';
+    public const DEFAULT_API_URL = 'https://ingress.perfbase.cloud';
+
+    /**
+     * Long-running console commands. Profiling them would keep a single trace
+     * open for the life of the worker process. yii2-queue commands are matched
+     * as `queue/<action>` whatever ID the queue component is registered under.
+     */
+    public const DEFAULT_CONSOLE_EXCLUDES = ['queue/listen', 'queue/run', 'serve', 'serve/*'];
+
+    // Config properties are intentionally untyped: Yii assigns component config
+    // verbatim, so values read from environment variables arrive as strings (or
+    // null / false), which would be a TypeError on a typed property. They are
+    // normalised in getConfig().
+
+    /** @var bool|int|string|null */
+    public $enabled = false;
+    /** @var bool|int|string|null */
+    public $debug = false;
+    /** @var bool|int|string|null */
+    public $log_errors = true;
+    /** @var string|null */
+    public $api_key = '';
+    /** @var string|null */
+    public $api_url = self::DEFAULT_API_URL;
     /** @var float|int|string */
     public $sample_rate = 0.1;
     /** @var array<int, int|string>|null */
-    public ?array $profile_http_status_codes = null;
-    public int $timeout = 10;
-    public ?string $proxy = null;
-    public int $flags = FeatureFlags::DefaultFlags;
-    public string $app_version = '';
+    public $profile_http_status_codes = null;
+    /** @var int|string|null */
+    public $timeout = 10;
+    /** @var string|null */
+    public $proxy = null;
+    /** @var int|string|null */
+    public $flags = FeatureFlags::DefaultFlags;
+    /** @var int|string|null */
+    public $app_version = '';
 
-    /** @var array<string, array<int, string>> */
-    public array $include = [
+    /** @var array<string, mixed>|null */
+    public $include = [
         'http' => ['*'],
         'console' => ['*'],
     ];
 
-    /** @var array<string, array<int, string>> */
-    public array $exclude = [
+    /**
+     * When a context key is missing, its defaults apply, so overriding only
+     * `exclude.http` keeps the long-running console commands excluded.
+     *
+     * @var array<string, mixed>|null
+     */
+    public $exclude = [
         'http' => [],
-        'console' => [],
+        'console' => self::DEFAULT_CONSOLE_EXCLUDES,
     ];
 
     private ?PerfbaseClientProvider $clientProvider = null;
@@ -80,25 +109,28 @@ class PerfbaseComponent extends Component implements BootstrapInterface
             ? [...range(200, 299), ...range(500, 599)]
             : $this->normalizeStatusCodes($this->profile_http_status_codes);
 
+        $include = is_array($this->include) ? $this->include : [];
+        $exclude = is_array($this->exclude) ? $this->exclude : [];
+
         return [
-            'enabled' => $this->enabled,
-            'debug' => $this->debug,
-            'log_errors' => $this->log_errors,
-            'api_key' => $this->api_key,
-            'api_url' => $this->api_url,
+            'enabled' => ConfigNormalizer::bool($this->enabled, false),
+            'debug' => ConfigNormalizer::bool($this->debug, false),
+            'log_errors' => ConfigNormalizer::bool($this->log_errors, true),
+            'api_key' => ConfigNormalizer::string($this->api_key),
+            'api_url' => ConfigNormalizer::string($this->api_url, self::DEFAULT_API_URL),
             'sample_rate' => $this->sample_rate,
             'profile_http_status_codes' => $profileHttpStatusCodes,
-            'timeout' => $this->timeout,
-            'proxy' => $this->proxy,
-            'flags' => $this->flags,
-            'app_version' => $this->app_version,
+            'timeout' => ConfigNormalizer::int($this->timeout, 10),
+            'proxy' => ConfigNormalizer::stringOrNull($this->proxy),
+            'flags' => ConfigNormalizer::int($this->flags, FeatureFlags::DefaultFlags),
+            'app_version' => ConfigNormalizer::string($this->app_version),
             'include' => [
-                'http' => $this->normalizeFilters($this->include['http'] ?? ['*']),
-                'console' => $this->normalizeFilters($this->include['console'] ?? ['*']),
+                'http' => $this->normalizeFilters($include['http'] ?? ['*']),
+                'console' => $this->normalizeFilters($include['console'] ?? ['*']),
             ],
             'exclude' => [
-                'http' => $this->normalizeFilters($this->exclude['http'] ?? []),
-                'console' => $this->normalizeFilters($this->exclude['console'] ?? []),
+                'http' => $this->normalizeFilters($exclude['http'] ?? []),
+                'console' => $this->normalizeFilters($exclude['console'] ?? self::DEFAULT_CONSOLE_EXCLUDES),
             ],
         ];
     }
@@ -110,7 +142,10 @@ class PerfbaseComponent extends Component implements BootstrapInterface
 
     protected function createErrorHandler(): PerfbaseErrorHandler
     {
-        return new PerfbaseErrorHandler($this->debug, $this->log_errors);
+        return new PerfbaseErrorHandler(
+            ConfigNormalizer::bool($this->debug, false),
+            ConfigNormalizer::bool($this->log_errors, true)
+        );
     }
 
     private function getBootstrapper(): PerfbaseBootstrap

@@ -76,25 +76,32 @@ abstract class AbstractProfiler
 
     public function stopProfiling(): void
     {
-        if (!$this->started || $this->client === null) {
+        $client = $this->client;
+        if (!$this->started || $client === null) {
             return;
         }
 
         try {
-            foreach ($this->attributes as $key => $value) {
-                $this->client->setAttribute($key, $value);
+            try {
+                $this->collectFinalAttributes();
+            } catch (\Throwable $throwable) {
+                $this->errorHandler->handle($throwable, 'collect_attributes');
             }
 
-            if (!$this->client->stopTraceSpan($this->spanName)) {
+            foreach ($this->attributes as $key => $value) {
+                $client->setAttribute($key, $value);
+            }
+
+            if (!$client->stopTraceSpan($this->spanName)) {
                 return;
             }
 
             if (!$this->shouldSubmitTrace()) {
-                $this->client->reset();
+                $client->reset();
                 return;
             }
 
-            $result = $this->client->submitTrace();
+            $result = $client->submitTrace();
             if (!$result->isSuccess()) {
                 $this->errorHandler->handle(
                     new \RuntimeException(sprintf(
@@ -175,6 +182,14 @@ abstract class AbstractProfiler
         }
 
         return (mt_rand() / mt_getrandmax()) <= $sampleRate;
+    }
+
+    /**
+     * Called once, just before the span is stopped, for attributes that are
+     * only known (or only safe to read) at the end of the request.
+     */
+    protected function collectFinalAttributes(): void
+    {
     }
 
     abstract protected function shouldProfile(): bool;

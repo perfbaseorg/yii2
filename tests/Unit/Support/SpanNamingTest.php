@@ -41,7 +41,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestConsoleController('migrate', $app);
         $action = new Action('up', $controller);
 
-        self::assertSame('artisan', SpanNaming::forConsole($app, $action));
+        self::assertSame('cli', SpanNaming::forConsole($app, $action));
     }
 
     public function test_http_falls_back_to_server_request_uri_when_request_url_is_empty(): void
@@ -60,7 +60,7 @@ class SpanNamingTest extends TestCase
         $controller = new TestConsoleController('', $app);
         $action = new Action('', $controller);
 
-        self::assertSame('artisan', SpanNaming::forConsole($app, $action));
+        self::assertSame('cli', SpanNaming::forConsole($app, $action));
     }
 
     public function test_http_falls_back_to_path_info_when_other_request_sources_are_empty(): void
@@ -132,6 +132,6 @@ class SpanNamingTest extends TestCase
     private function resetYiiApplication(): void
     {
         $property = new \ReflectionProperty(BaseYii::class, 'app');
-        $property->setValue(null);
+        $property->setValue(null, null);
     }
 }

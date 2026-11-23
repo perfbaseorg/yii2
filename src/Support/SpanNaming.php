@@ -17,6 +17,6 @@ class SpanNaming
 
     public static function forConsole(ConsoleApplication $app, Action $action): string
     {
-        return 'artisan';
+        return 'cli';
     }
 }

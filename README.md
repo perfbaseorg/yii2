@@ -35,9 +35,9 @@ v1 does not support:
 
 ## Requirements
 
-- PHP `>=7.4 <8.5`
-- Yii2 `^2.0.45`
-- `perfbase/php-sdk` `^1.0`
+- PHP `>=7.4 <8.7`
+- Yii2 `^2.0.45` (tested with 2.0.45 and 2.0.55)
+- `perfbase/php-sdk` `^1.9`
 - The Perfbase PHP extension installed for the target PHP runtime
 
 ## Installation
@@ -86,17 +86,39 @@ The same component can be registered in web and console app configs.
     ],
     'exclude' => [
         'http' => [],
-        'console' => [],
+        'console' => ['queue/listen', 'queue/run', 'serve', 'serve/*'],
     ],
 ]
 ```
 
 Notes:
 
+- Values may be strings, as read from environment variables: `'true'` / `'false'` /
+  `'1'` / `'0'` for booleans, digit strings for `timeout` and `flags`, and empty
+  strings for "not set" (`proxy`, `api_url`, `app_version`)
+- if `exclude` is set without a `console` key, the default console excludes still apply
+
 - `sample_rate` must be numeric between `0.0` and `1.0`
 - `profile_http_status_codes` defaults to `[...range(200, 299), ...range(500, 599)]`. Add codes such as `404` if you want to keep them, or set it to `[]` to disable HTTP trace submission entirely.
 - `environment` is derived from `YII_ENV`, otherwise `production`
 - `app_version` is application-defined
+
+## Feature Flags
+
+`flags` is passed to the Perfbase extension. The default,
+`FeatureFlags::DefaultFlags`, enables everything except per-function CPU time and
+memory allocation tracking. `0` (`FeatureFlags::AllFlags`) enables every feature
+except the opt-in flags `UsePreciseClock` and `TrackCpuTime`.
+
+Available flags (combine with `|`): `UsePreciseClock`, `TrackCpuTime`,
+`TrackMemoryAllocation`, `TrackExceptions`, `TrackFileCompilation`, `TrackPdo`,
+`TrackMongodb`, `TrackElasticsearch`, `TrackCaches`, `TrackHttp`, `TrackMail`,
+`TrackFileOperations`, `TrackProc`, `TrackProcessList`, `TrackErrors`,
+`TrackMagicMethods`, `TrackOpcache`, `TrackStreams` (PHP 8.6+).
+
+```php
+'flags' => \Perfbase\SDK\FeatureFlags::DefaultFlags | \Perfbase\SDK\FeatureFlags::TrackCpuTime,
+```
 
 ## HTTP Profiling
 
@@ -115,7 +137,7 @@ Attributes include:
 - `http_status_code`
 - `user_ip`
 - `user_agent`
-- `user_id` when Yii user state is available and authenticated
+- `user_id` when the application instantiated the `user` component during the request and an identity is logged in
 - `hostname`
 - `environment`
 - `app_version`
@@ -123,10 +145,29 @@ Attributes include:
 
 Behavior details:
 
-- action naming prefers stable route/controller identifiers
-- `http_url` excludes query strings
+- action naming prefers stable route/controller identifiers and never contains the query string
+- `http_url` is the full request URL including the query string (see below)
+- the profiler never instantiates the `user` component or auto-renews the identity itself, so it does not open sessions or run cookie-login queries
 - HTTP traces are only submitted when the response status code is in `profile_http_status_codes`
 - profiling is skipped when filters fail or the extension is unavailable
+
+## URL and Privacy Behavior
+
+`http_url` keeps the query string, because it often identifies the operation
+(`/index.php?r=site/page`), but the values of credential-looking parameters are
+replaced with `REDACTED` by the PHP SDK's `UrlSanitizer`: names such as `token`,
+`access_token`, `password`, `api_key`, `signature`, `nonce`, `PHPSESSID` and
+`email`. User info and fragments are dropped.
+
+```text
+https://example.com/ajax.php?method=example&token=secret
+```
+
+becomes:
+
+```text
+https://example.com/ajax.php?method=example&token=REDACTED
+```
 
 ## Console Profiling
 
@@ -143,6 +184,20 @@ Console attributes include:
 - `exit_code` when Yii2 exposes one through the response object
 
 Exit code handling is intentionally best-effort and non-invasive.
+
+The console span name is `cli`; the command route (`controller/action`) is in
+the `action` attribute. Earlier releases named this span `artisan`.
+
+Long-running commands are excluded by default, because each would keep a single
+trace open for the life of the process:
+
+- yii2-queue workers `queue/listen` and `queue/run`. Queue commands are matched as
+  `queue/<action>` whatever ID the queue component is registered under
+  (`mail-queue/listen` matches too).
+- the built-in development server, `serve`.
+
+Add any other daemons of your own to `exclude.console`. Removing an entry from
+`exclude.console` opts that command back in.
 
 ## Filters
 
@@ -167,7 +222,7 @@ Example:
 ],
 'exclude' => [
     'http' => ['debug/*'],
-    'console' => ['help'],
+    'console' => ['queue/listen', 'queue/run', 'serve', 'serve/*', 'help'],
 ],
 ```
 
@@ -177,7 +232,7 @@ The adapter fails open by design:
 
 - invalid SDK configuration becomes a no-op
 - missing extension becomes a no-op
-- submit failures do not break the Yii application
+- submit failures, including exceptions thrown by the SDK while submitting, do not break the Yii application
 
 Behavior:
 
@@ -188,10 +243,10 @@ Behavior:
 
 Primary entry points:
 
-- [`PerfbaseComponent.php`](/Users/ben/Projects/Perfbase/environment/projects/lib-yii2/src/PerfbaseComponent.php)
-- [`PerfbaseBootstrap.php`](/Users/ben/Projects/Perfbase/environment/projects/lib-yii2/src/PerfbaseBootstrap.php)
-- lifecycle classes in [`src/Lifecycle`](/Users/ben/Projects/Perfbase/environment/projects/lib-yii2/src/Lifecycle)
-- support helpers in [`src/Support`](/Users/ben/Projects/Perfbase/environment/projects/lib-yii2/src/Support)
+- [`PerfbaseComponent.php`](src/PerfbaseComponent.php)
+- [`PerfbaseBootstrap.php`](src/PerfbaseBootstrap.php)
+- lifecycle classes in [`src/Lifecycle`](src/Lifecycle)
+- support helpers in [`src/Support`](src/Support)
 
 This package does not implement its own buffering, retry, or persistence layer.
 
@@ -205,9 +260,17 @@ composer run test
 composer run phpstan
 ```
 
+Yii 2.0.x depends on `bower-asset/*` packages that are only published on
+asset-packagist. Without that repository Composer falls back to the unreleased
+`2.2.x-dev` branch, so add it before installing:
+
+```bash
+composer config repositories.asset-packagist composer https://asset-packagist.org
+```
+
 ## Limitations
 
-- Queue workers are out of scope for v1
+- Queue jobs are not profiled individually, and queue worker commands are excluded by default
 - No profiler toolbar or Yii-specific UI
 - Exit code capture for console commands depends on what the Yii 2 response object exposes
 

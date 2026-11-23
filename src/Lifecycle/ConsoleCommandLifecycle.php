@@ -38,7 +38,7 @@ class ConsoleCommandLifecycle extends AbstractProfiler
         }
 
         return FilterMatcher::passesFilters(
-            [$this->resolveCommandName()],
+            $this->getCommandComponents(),
             $this->normalizeFilters($this->config['include']['console'] ?? ['*']),
             $this->normalizeFilters($this->config['exclude']['console'] ?? [])
         );
@@ -52,6 +52,24 @@ class ConsoleCommandLifecycle extends AbstractProfiler
             'source' => 'console',
             'action' => $this->resolveCommandName(),
         ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getCommandComponents(): array
+    {
+        $components = [$this->resolveCommandName()];
+
+        // yii2-queue registers its command under the queue component's ID
+        // (`queue`, `mail-queue`, ...). Add a canonical `queue/<action>` alias
+        // so the default worker excludes match every queue.
+        $queueCommandClass = 'yii\\queue\\cli\\Command';
+        if ($this->action->controller instanceof $queueCommandClass) {
+            $components[] = 'queue/' . $this->action->id;
+        }
+
+        return array_values(array_unique($components));
     }
 
     private function resolveCommandName(): string
