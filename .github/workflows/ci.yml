@@ -33,8 +33,11 @@ jobs:
             yii-version: '~2.0.55'
           - php-version: '8.5'
             yii-version: '~2.0.55'
+          # ezyang/htmlpurifier (required by yii2) only declares PHP up to 8.5,
+          # so the 8.6 lane ignores the PHP platform constraint.
           - php-version: '8.6'
             yii-version: '~2.0.55'
+            ignore-php-platform: true
 
     steps:
       - name: Checkout yii2
@@ -60,7 +63,7 @@ jobs:
 
       - name: Resolve Yii ${{ matrix.yii-version }}
         working-directory: yii2
-        run: composer update --with "yiisoft/yii2:${{ matrix.yii-version }}" --no-security-blocking --prefer-dist --no-progress
+        run: composer update --with "yiisoft/yii2:${{ matrix.yii-version }}" --no-security-blocking --prefer-dist --no-progress ${{ matrix.ignore-php-platform && '--ignore-platform-req=php' || '' }}
 
       - name: Run PHPStan
         working-directory: yii2
